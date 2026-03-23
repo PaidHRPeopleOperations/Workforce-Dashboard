@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaidHR Workforce Attrition Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #13161e;
+  --surface2: #1a1e28;
+  --surface3: #222738;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --muted: #7a7f94;
+  --dim: #4a4f64;
+  --red: #f05050;
+  --red-soft: rgba(240,80,80,0.12);
+  --amber: #f0a030;
+  --amber-soft: rgba(240,160,48,0.12);
+  --green: #38c98a;
+  --green-soft: rgba(56,201,138,0.12);
+  --blue: #4d9ef5;
+  --blue-soft: rgba(77,158,245,0.12);
+  --purple: #9b7cf4;
+  --teal: #2dd4bf;
+  --accent: #4d9ef5;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── TOP HEADER ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-logo {
+  width: 32px; height: 32px;
+  background: var(--blue);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 600; color: white;
+}
+.header-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.report-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--muted);
+  background: var(--surface2);
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.refresh-btn {
+  background: var(--blue); color: white;
+  border: none; border-radius: 8px;
+  padding: 7px 14px; font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: center; gap: 6px;
+  transition: opacity 0.15s;
+}
+.refresh-btn:hover { opacity: 0.85; }
+.refresh-btn svg { width: 13px; height: 13px; }
+
+/* ── INSTRUCTIONS BANNER ── */
+.instructions {
+  background: var(--blue-soft);
+  border: 1px solid rgba(77,158,245,0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 20px 32px 0;
+  font-size: 12px;
+  color: #a0c4f8;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.instructions strong { color: var(--blue); }
+.instructions code {
+  font-family: 'DM Mono', monospace;
+  background: rgba(77,158,245,0.15);
+  padding: 1px 5px; border-radius: 4px; font-size: 11px;
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex; gap: 2px;
+  padding: 20px 32px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 9px 16px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border-radius: 8px 8px 0 0;
+  color: var(--muted); border: 1px solid transparent;
+  border-bottom: none; margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: var(--text); background: var(--surface);
+  border-color: var(--border); border-bottom-color: var(--surface);
+}
+
+/* ── PANELS ── */
+.panel { display: none; padding: 24px 32px 40px; }
+.panel.active { display: block; }
+
+/* ── KPI GRID ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.kpi-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi-value { font-size: 26px; font-weight: 600; line-height: 1; margin-bottom: 4px; }
+.kpi-sub { font-size: 11px; color: var(--muted); }
+.kpi-value.red { color: var(--red); }
+.kpi-value.green { color: var(--green); }
+.kpi-value.amber { color: var(--amber); }
+.kpi-value.blue { color: var(--blue); }
+
+/* ── GRID LAYOUTS ── */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.grid-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; margin-bottom: 14px; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+.card-title {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+.chart-wrap { position: relative; width: 100%; }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-size: 11px; font-weight: 600; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin: 20px 0 10px;
+}
+
+/* ── LEGEND ── */
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── DEPT TABLE ── */
+.dept-table { width: 100%; border-collapse: collapse; }
+.dept-table th {
+  font-size: 10px; font-weight: 600; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0 10px 10px; text-align: left; border-bottom: 1px solid var(--border);
+}
+.dept-table th:not(:first-child) { text-align: center; }
+.dept-table td {
+  padding: 11px 10px; font-size: 12px; border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.dept-table tr:last-child td { border-bottom: none; }
+.dept-table td:not(:first-child) { text-align: center; }
+.dept-name { font-weight: 500; }
+.risk-badge {
+  font-size: 10px; font-weight: 600; padding: 3px 8px;
+  border-radius: 6px; display: inline-block;
+}
+.risk-Critical { background: var(--red-soft); color: var(--red); }
+.risk-High     { background: var(--amber-soft); color: var(--amber); }
+.risk-Medium   { background: rgba(155,124,244,0.12); color: var(--purple); }
+.risk-Low      { background: var(--green-soft); color: var(--green); }
+.risk-New      { background: var(--blue-soft); color: var(--blue); }
+
+/* ── FLAGS ── */
+.flag {
+  border-radius: 10px; padding: 10px 14px;
+  margin-bottom: 8px; font-size: 12px; line-height: 1.6;
+}
+.flag-r { background: var(--red-soft); border: 1px solid rgba(240,80,80,0.2); color: #f8aaaa; }
+.flag-a { background: var(--amber-soft); border: 1px solid rgba(240,160,48,0.2); color: #f8d090; }
+.flag-g { background: var(--green-soft); border: 1px solid rgba(56,201,138,0.2); color: #90e8c0; }
+
+/* ── UPDATE LOG ── */
+.update-log {
+  margin-top: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+.log-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.log-entry {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-date { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--blue); white-space: nowrap; margin-top: 2px; width: 70px; flex-shrink: 0; }
+.log-desc { color: var(--muted); }
+.log-desc strong { color: var(--text); }
+
+/* ── HOW TO UPDATE ── */
+.how-to {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-top: 20px;
+}
+.how-to h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+.steps { display: flex; flex-direction: column; gap: 10px; }
+.step { display: flex; gap: 12px; align-items: flex-start; }
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--blue); color: white;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.step-text { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.step-text strong { color: var(--text); }
+.step-text code {
+  font-family: 'DM Mono', monospace;
+  background: var(--surface3); padding: 1px 6px;
+  border-radius: 4px; font-size: 11px; color: var(--teal);
+}
+
+/* ── LOADING STATE ── */
+#loading {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999; flex-direction: column; gap: 12px;
+}
+.spinner {
+  width: 36px; height: 36px; border: 3px solid var(--border);
+  border-top-color: var(--blue); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── NAME GATE ── */
+#name-gate {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.gate-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 40px 44px;
+  width: 100%; max-width: 420px;
+  text-align: center;
+}
+.gate-logo {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: var(--blue); color: white;
+  font-size: 24px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.gate-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.gate-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.gate-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 14px;
+  margin-bottom: 12px; outline: none; transition: border 0.15s;
+}
+.gate-input:focus { border-color: var(--blue); }
+.gate-btn {
+  width: 100%; padding: 12px;
+  background: var(--blue); color: white; border: none;
+  border-radius: 10px; font-family: 'DM Sans', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.gate-btn:hover { opacity: 0.88; }
+.gate-error {
+  font-size: 12px; color: var(--red);
+  margin-top: 10px; display: none;
+}
+.gate-footer {
+  font-size: 11px; color: var(--dim); margin-top: 20px; line-height: 1.6;
+}
+
+/* ── VIEWER LOG ── */
+.viewer-log-wrap {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px; margin-top: 20px;
+}
+.viewer-log-title {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.clear-log-btn {
+  font-size: 10px; color: var(--red); background: none; border: none;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; opacity: 0.7;
+}
+.clear-log-btn:hover { opacity: 1; }
+.log-entry-row {
+  display: grid; grid-template-columns: 140px 1fr 80px;
+  gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--border); font-size: 11px; align-items: center;
+}
+.log-entry-row:last-child { border-bottom: none; }
+.log-name { font-weight: 600; color: var(--text); }
+.log-time { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; }
+.log-sessions { color: var(--blue); font-size: 10px; text-align: right; }
+.log-empty { font-size: 12px; color: var(--dim); text-align: center; padding: 16px 0; }
+.log-tabs { font-size: 10px; color: var(--dim); margin-top: 2px; }
+
+</style>
+</head>
+<body>
+
+
+<div id="name-gate">
+  <div class="gate-card">
+    <div class="gate-logo">P</div>
+    <div class="gate-title">PaidHR Workforce Dashboard</div>
+    <div class="gate-sub">Enter your details and password to access the dashboard</div>
+    <input type="text" id="gate-name" class="gate-input" placeholder="Your full name"
+           maxlength="60" autocomplete="name"
+           onkeydown="if(event.key==='Enter') document.getElementById('gate-email').focus()">
+    <input type="email" id="gate-email" class="gate-input" placeholder="Your email address"
+           maxlength="120" autocomplete="email"
+           onkeydown="if(event.key==='Enter') document.getElementById('gate-password').focus()">
+    <input type="password" id="gate-password" class="gate-input" placeholder="Dashboard password"
+           maxlength="50" autocomplete="off"
+           onkeydown="if(event.key==='Enter') enterDashboard()">
+    <button class="gate-btn" onclick="enterDashboard()">Enter Dashboard</button>
+    <div class="gate-error" id="gate-error">Please enter your name to continue</div>
+    <div class="gate-footer">Your name, email and visit will be logged for access tracking. Contact People & Culture for access.</div>
+  </div>
+</div>
+
+<div id="loading" style="display:none">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--muted)">Loading dashboard...</div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">P</div>
+    <div>
+      <div class="header-title">PaidHR Workforce Attrition Dashboard</div>
+      <div class="header-sub">People & Culture · Live Analytics</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="report-date" id="reportDate">—</div>
+    <button class="refresh-btn" onclick="document.getElementById('fileInput').click()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 8a6 6 0 1 0 1-3.5" stroke-linecap="round"/>
+        <path d="M2 2v4h4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Update Data
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="loadFile(event)">
+  </div>
+</div>
+
+<div class="instructions">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="6"/><path d="M8 7v5M8 5v.5" stroke-linecap="round"/></svg>
+  <div>
+    <strong>To update this dashboard:</strong> Click <strong>"Update Data"</strong> and select your latest Excel export from Google Sheets. The dashboard will instantly refresh with new data — no internet required. Works every month. You will need to log in to access the dashboard.
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('active')">Active Workforce</div>
+  <div class="tab" onclick="showTab('attrition')">Attrition</div>
+  <div class="tab" onclick="showTab('compare')">Comparison</div>
+  <div class="tab" onclick="showTab('risk')">Risk & Actions</div>
+  <div class="tab" onclick="showTab('trends')">Headcount Trends</div>
+  <div class="tab" onclick="showTab('payroll')">Payroll</div>
+  <div class="tab" onclick="showTab('viewers')">Viewer Log</div>
+  <div class="tab" onclick="showTab('howto')">How to Update</div>
+</div>
+
+<!-- OVERVIEW -->
+<div id="overview" class="panel active">
+  <div class="kpi-grid" id="kpi-overview"></div>
+
+  <div class="section-label">Annual headcount flow</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Hires vs exits by year — active staff hired that year</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Active hires</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Exits</div>
+    </div>
+    <div class="chart-wrap" style="height:190px"><canvas id="c_flow"></canvas></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Active headcount by department</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="c_ovdept"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Workforce composition</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Gender — active</div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#9b7cf4"></span>Female</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Male</div>
+          </div>
+          <div class="chart-wrap" style="height:120px"><canvas id="c_gen_a"></canvas></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Employment type</div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Full-time</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2dd4bf"></span>Contract</div>
+          </div>
+          <div class="chart-wrap" style="height:120px"><canvas id="c_typ_a"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVE WORKFORCE -->
+<div id="active" class="panel">
+  <div class="kpi-grid" id="kpi-active"></div>
+  <div class="section-label">Department breakdown</div>
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-title">Headcount by department</div>
+      <div class="chart-wrap" style="height:210px"><canvas id="c_adept"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Gender split by department</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#9b7cf4"></span>Female</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Male</div>
+      </div>
+      <div class="chart-wrap" style="height:210px"><canvas id="c_adeptg"></canvas></div>
+    </div>
+  </div>
+  <div class="section-label">Contract vs full-time</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Full-time vs contract by department</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Full-time</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#2dd4bf"></span>Contract</div>
+    </div>
+    <div class="chart-wrap" style="height:155px"><canvas id="c_adepttyp"></canvas></div>
+  </div>
+  <div class="section-label">Tenure health</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Tenure distribution</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>0–6m</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f0a030"></span>6–12m</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f0c860"></span>1–2yr</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>2–5yr</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>5yr+</div>
+      </div>
+      <div class="chart-wrap" style="height:140px"><canvas id="c_ten_b"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg tenure by exit type (months)</div>
+      <div class="chart-wrap" style="height:140px"><canvas id="c_tentyp"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ATTRITION -->
+<div id="attrition" class="panel">
+  <div class="kpi-grid" id="kpi-attrition"></div>
+  <div class="section-label">Quarterly trend</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Exits per quarter — stacked by exit type</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Termination</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>Voluntary</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f0a030"></span>Redundancy</div>
+    </div>
+    <div class="chart-wrap" style="height:190px"><canvas id="c_qtr"></canvas></div>
+  </div>
+  <div class="grid3">
+    <div class="card">
+      <div class="card-title">Exit type split</div>
+      <div class="chart-wrap" style="height:130px"><canvas id="c_typex"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Gender × exit type</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Term</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>Vol</div>
+      </div>
+      <div class="chart-wrap" style="height:130px"><canvas id="c_gentyp"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg tenure by exit type</div>
+      <div class="chart-wrap" style="height:130px"><canvas id="c_tentype2"></canvas></div>
+    </div>
+  </div>
+  <div class="section-label">Department exits</div>
+  <div class="card">
+    <div class="card-title">Exits by department — stacked by exit type</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Termination</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>Voluntary</div>
+    </div>
+    <div class="chart-wrap" style="height:190px"><canvas id="c_edept"></canvas></div>
+  </div>
+</div>
+
+<!-- COMPARISON -->
+<div id="compare" class="panel">
+  <div class="kpi-grid" id="kpi-compare"></div>
+
+  <div class="section-label">Active vs exited — all departments</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Headcount comparison</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>Active</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Exited</div>
+    </div>
+    <div class="chart-wrap" style="height:200px"><canvas id="c_cmp_dept"></canvas></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Avg tenure: active vs exited by dept</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>Active</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Exited</div>
+      </div>
+      <div class="chart-wrap" style="height:175px"><canvas id="c_cmp_ten"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Gender: active vs exited</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#9b7cf4"></span>Female</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Male</div>
+      </div>
+      <div class="chart-wrap" style="height:175px"><canvas id="c_cmp_gen"></canvas></div>
+    </div>
+  </div>
+  <div class="section-label">Department exit ratio table</div>
+  <div class="card">
+    <table class="dept-table" id="dept-table"></table>
+  </div>
+</div>
+
+<!-- RISK & ACTIONS -->
+<div id="risk" class="panel">
+  <div class="section-label">Critical alerts</div>
+  <div id="flags-critical"></div>
+  <div class="section-label">High-risk observations</div>
+  <div id="flags-high"></div>
+  <div class="section-label">Positive signals</div>
+  <div id="flags-good"></div>
+  <div id="update-log" class="update-log">
+    <div class="log-title">Data update log</div>
+    <div id="log-entries"></div>
+  </div>
+</div>
+
+<!-- HEADCOUNT TRENDS -->
+<div id="trends" class="panel">
+  <div class="kpi-grid" id="kpi-trends"></div>
+
+  <div class="section-label">Monthly headcount growth — Jan 2022 to present</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Total employees on payroll each month</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Headcount</div>
+      <div class="legend-item"><span class="legend-dot" style="background:rgba(77,158,245,0.15)"></span>Growth area</div>
+    </div>
+    <div class="chart-wrap" style="height:220px"><canvas id="c_monthly"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Year-on-year: start vs end headcount</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Start (Jan 1)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>End (Dec 31)</div>
+      </div>
+      <div class="chart-wrap" style="height:185px"><canvas id="c_yoy"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Annual turnover rate (%)</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Exits ÷ average headcount that year</div>
+      <div class="chart-wrap" style="height:185px"><canvas id="c_turnover"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Quarterly headcount & growth rate</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">End-of-quarter headcount with quarter-on-quarter growth %</div>
+    <div class="chart-wrap" style="height:200px"><canvas id="c_qtr_growth"></canvas></div>
+  </div>
+
+  <div class="section-label">Year-on-year summary table</div>
+  <div class="card">
+    <table class="dept-table" id="yoy-table"></table>
+  </div>
+</div>
+
+
+<!-- PAYROLL PANEL -->
+<div id="payroll" class="panel">
+  <div class="kpi-grid" id="kpi-payroll" style="grid-template-columns:repeat(6,minmax(0,1fr))"></div>
+
+  <div class="section-label">Average gross salary by department (annual)</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Avg gross annual salary — sorted highest to lowest</div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Avg gross (annual)</div>
+      <div class="legend-item"><span class="legend-dot" style="background:rgba(77,158,245,0.3)"></span>Company avg</div>
+    </div>
+    <div class="chart-wrap" style="height:220px"><canvas id="c_pay_avg"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Total annual payroll by department</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="c_pay_total"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg net monthly take-home by department</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="c_pay_net"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Pay range per department — min to max gross annual</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#f05050"></span>Min</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#4d9ef5"></span>Avg</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#38c98a"></span>Max</div>
+      </div>
+      <div class="chart-wrap" style="height:200px"><canvas id="c_pay_range"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg tax vs avg pension by department (annual)</div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#f0a030"></span>Avg tax</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#9b7cf4"></span>Avg pension</div>
+      </div>
+      <div class="chart-wrap" style="height:200px"><canvas id="c_pay_tax"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Total pension per department (annual)</div>
+      <div class="chart-wrap" style="height:190px"><canvas id="c_pay_pension"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Total tax per department (annual)</div>
+      <div class="chart-wrap" style="height:190px"><canvas id="c_pay_taxdept"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Department payroll summary table</div>
+  <div class="card">
+    <table class="dept-table" id="payroll-table"></table>
+  </div>
+</div>
+
+<!-- VIEWER LOG PANEL -->
+<div id="viewers" class="panel">
+
+  <!-- Admin password gate -->
+  <div id="viewer-lock" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center">
+    <div style="width:48px;height:48px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px">🔒</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:6px">Admin access required</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Enter the admin password to view the log</div>
+    <input type="password" id="admin-pw-input" placeholder="Enter password"
+      style="width:260px;padding:11px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-bottom:10px;text-align:center"
+      onkeydown="if(event.key==='Enter') checkAdminPw()">
+    <button onclick="checkAdminPw()"
+      style="width:260px;padding:11px;background:var(--blue);color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer">
+      Unlock
+    </button>
+    <div id="admin-pw-error" style="font-size:12px;color:var(--red);margin-top:10px;display:none">Incorrect password</div>
+  </div>
+
+  <!-- Actual log content — hidden until unlocked -->
+  <div id="viewer-log-content" style="display:none">
+  <div class="kpi-grid" id="kpi-viewers" style="grid-template-columns:repeat(4,1fr)"></div>
+  <div class="section-label">Access log — everyone who has opened this dashboard</div>
+  <div class="viewer-log-wrap">
+    <div class="viewer-log-title">
+      <span>Viewer log</span>
+      <button class="clear-log-btn" onclick="clearViewerLog()">Clear log</button>
+    </div>
+    <div id="viewer-log-entries"></div>
+  </div>
+  <div style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:11px;color:var(--muted);line-height:1.8">
+    <strong style="color:var(--text)">How this log works:</strong><br>
+    Every time someone opens this dashboard and enters their name, it's recorded here with their timestamp and which tabs they visited.<br>
+    The log is stored in the browser on each device — so if someone views on a different computer, their entry appears there.<br>
+    To see all viewers across all devices, collect the log from each device.
+  </div>
+  </div><!-- end viewer-log-content -->
+</div>
+
+<!-- HOW TO UPDATE -->
+<div id="howto" class="panel">
+  <div class="how-to">
+    <h3>How to keep this dashboard current every month</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>Update your Google Sheet</strong> — add new exits to the <code>Exit Data</code> tab and update the <code>Active Workforce</code> tab (remove the person who left). Keep the same column structure.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>Download as Excel</strong> — in Google Sheets go to <code>File → Download → Microsoft Excel (.xlsx)</code>. Save it somewhere easy to find.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>Open this HTML file</strong> in any browser (Chrome, Edge, Firefox). Click <strong>"Update Data"</strong> in the top right corner.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">
+          <strong>Select the downloaded Excel file</strong> — the dashboard will instantly update with all new data. Every chart, KPI, and table refreshes automatically.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text">
+          <strong>That's it.</strong> No internet needed after initial load. No subscriptions. 
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
+    <div class="log-title">Required column structure — do not rename these</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+      <div>
+        <div style="font-size:11px;color:var(--blue);margin-bottom:6px;font-weight:600">Active Workforce tab</div>
+        <div style="font-size:11px;color:var(--muted);line-height:2;font-family:'DM Mono',monospace">
+          Full Name<br>Department<br>Gender<br>Hire Date<br>Employment Status<br>Tenure (Months)<br>Tenure Bucket<br>Hire Year<br>Contract?
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--red);margin-bottom:6px;font-weight:600">Exit Data tab</div>
+        <div style="font-size:11px;color:var(--muted);line-height:2;font-family:'DM Mono',monospace">
+          Full Name<br>Role<br>Department<br>Gender<br>Hire Date<br>Exit Date<br>Employment Status<br>Exit Type<br>Tenure (Months)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── Chart defaults ────────────────────────────────────────────────────────────
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = '#7a7f94';
+const GR = 'rgba(255,255,255,0.05)';
+const LB = '#4a4f64';
+const baseOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } }
+};
+const sY = { ticks: { color: LB, font: { size: 10 } }, grid: { color: GR } };
+const sX = { ticks: { color: LB, font: { size: 10 } }, grid: { display: false } };
+const sXr = { ticks: { color: LB, font: { size: 10 }, maxRotation: 38 }, grid: { display: false } };
+
+let charts = {};
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+function mk(id, cfg) { destroyChart(id); charts[id] = new Chart(document.getElementById(id), cfg); }
+
+// ── Tab navigation ────────────────────────────────────────────────────────────
+
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+let updateLog = JSON.parse(localStorage.getItem('wf_log') || '[]');
+function addLog(msg) {
+  const d = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  updateLog.unshift({ date: d, msg });
+  if (updateLog.length > 10) updateLog = updateLog.slice(0, 10);
+  localStorage.setItem('wf_log', JSON.stringify(updateLog));
+  renderLog();
+}
+function renderLog() {
+  const el = document.getElementById('log-entries');
+  if (!updateLog.length) { el.innerHTML = '<div style="font-size:12px;color:var(--dim)">No updates yet. Load your Excel file to begin.</div>'; return; }
+  el.innerHTML = updateLog.map(e => `<div class="log-entry"><div class="log-date">${e.date}</div><div class="log-desc">${e.msg}</div></div>`).join('');
+}
+renderLog();
+
+// ── File loader ───────────────────────────────────────────────────────────────
+function loadFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      processWorkbook(wb, file.name);
+      addLog(`<strong>${file.name}</strong> loaded — ${DATA.kpi.active} active, ${DATA.kpi.exits} exits`);
+    } catch(err) {
+      alert('Could not read file. Make sure it is the Excel export from your Google Sheet.\n\n' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function sheetToRows(wb, sheetName) {
+  const ws = wb.Sheets[sheetName];
+  if (!ws) return null;
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  // Row 0 = title banner, Row 1 = column headers, Row 2+ = data
+  if (raw.length < 3) return null;
+  const headers = raw[1];
+  return raw.slice(2).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i]; });
+    return obj;
+  }).filter(r => r['Full Name'] && String(r['Full Name']).trim() && String(r['Full Name']).trim() !== 'Full Name');
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const s = String(v).trim();
+  const fmts = [
+    /^(\d{4})-(\d{2})-(\d{2})/, // YYYY-MM-DD
+    /^(\d{2})\/(\d{2})\/(\d{4})/, // DD/MM/YYYY
+  ];
+  for (const f of fmts) {
+    const m = s.match(f);
+    if (m) {
+      const [,a,b,c] = m;
+      return s.includes('-') && a.length===4 ? new Date(+a,+b-1,+c) : new Date(+c,+b-1,+a);
+    }
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+// ── Main data processor ───────────────────────────────────────────────────────
+let DATA = null;
+
+function processWorkbook(wb, filename) {
+  const active  = sheetToRows(wb, 'Active Workforce');
+  const exits   = sheetToRows(wb, 'Exit Data');
+  const payraw  = sheetToRows(wb, 'Payroll Raw');
+  if (!active || !exits) { alert('Could not find "Active Workforce" or "Exit Data" tabs. Check your sheet names.'); return; }
+
+  const DEPTS = ['Product & Engineering','Customer Success','Sales','Marketing','Operations','Finance','People & Culture','Personnel'];
+
+  const num = v => parseFloat(v) || 0;
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+  // Active stats
+  active.forEach(r => { r._ten = num(r['Tenure (Months)']); r._yr = num(r['Hire Year']); });
+  exits.forEach(r => {
+    r._ten = num(r['Tenure (Months)']);
+    const ed = parseDate(r['Exit Date']);
+    r._exitDt = ed;
+    r._exitYr = ed ? ed.getFullYear() : null;
+    r._exitQtr = ed ? `${ed.getFullYear()}-Q${Math.floor(ed.getMonth()/3)+1}` : null;
+  });
+
+  const totalActive = active.length;
+  const totalExits  = exits.length;
+  const totalEver   = totalActive + totalExits;
+  const vol   = exits.filter(r=>r['Exit Type']==='Voluntary Resignation').length;
+  const term  = exits.filter(r=>r['Exit Type']==='Immediate Termination').length;
+  const redun = exits.filter(r=>r['Exit Type']==='Redundancy Exit').length;
+  const avgActiveTen = Math.round(avg(active.map(r=>r._ten))*10)/10;
+  const avgExitTen   = Math.round(avg(exits.map(r=>r._ten))*10)/10;
+  const exits2026    = exits.filter(r=>r._exitYr===2026).length;
+  const shortTen     = exits.filter(r=>r._ten<=6).length;
+
+  // Dept rows
+  const deptRows = DEPTS.map(d => {
+    const a  = active.filter(r=>r['Department']===d);
+    const e  = exits.filter(r=>r['Department']===d);
+    const at = Math.round(avg(a.map(r=>r._ten))*10)/10;
+    const et = Math.round(avg(e.map(r=>r._ten))*10)/10;
+    const t  = a.length + e.length;
+    const risk = {
+      'Product & Engineering':'High','Customer Success':'Low','Sales':'Critical',
+      'Marketing':'Medium','Operations':'High','Finance':'High',
+      'People & Culture':'Medium','Personnel':'New'
+    }[d] || 'Medium';
+    return { dept:d, active:a.length, exited:e.length, total:t,
+             exitRatio: t ? Math.round(e.length/t*100) : 0,
+             activeTen:at, exitTen:et, risk };
+  });
+
+  // Quarterly
+  const allQtrs = ['2022-Q1','2022-Q3','2023-Q1','2023-Q2','2023-Q3','2023-Q4',
+    '2024-Q1','2024-Q2','2024-Q3','2024-Q4','2025-Q1','2025-Q2','2025-Q3','2026-Q1','2026-Q2'];
+  const existingQtrs = [...new Set(exits.map(r=>r._exitQtr).filter(Boolean))];
+  const qtrsToShow = [...new Set([...allQtrs, ...existingQtrs])].sort();
+  const qtrData = qtrsToShow.map(q => ({
+    q,
+    term: exits.filter(r=>r._exitQtr===q && r['Exit Type']==='Immediate Termination').length,
+    vol:  exits.filter(r=>r._exitQtr===q && r['Exit Type']==='Voluntary Resignation').length,
+    red:  exits.filter(r=>r._exitQtr===q && r['Exit Type']==='Redundancy Exit').length,
+  }));
+
+  // Annual
+  const allYrs = [...new Set([...active.map(r=>r._yr), ...exits.map(r=>r._exitYr)].filter(y=>y&&y>2018))].sort();
+  const hireByYr = {};
+  active.forEach(r=>{ if(r._yr) hireByYr[r._yr] = (hireByYr[r._yr]||0)+1; });
+  const exitByYr = {};
+  exits.forEach(r=>{ if(r._exitYr) exitByYr[r._exitYr] = (exitByYr[r._exitYr]||0)+1; });
+  const annual = allYrs.map(y=>({ yr:y, hires:hireByYr[y]||0, exits:exitByYr[y]||0 }));
+
+  // Gender
+  const genAct = { Female: active.filter(r=>r['Gender']==='Female').length, Male: active.filter(r=>r['Gender']==='Male').length };
+  const genEx  = { Female: exits.filter(r=>r['Gender']==='Female').length, Male: exits.filter(r=>r['Gender']==='Male').length };
+  const femTerm = exits.filter(r=>r['Gender']==='Female'&&r['Exit Type']==='Immediate Termination').length;
+  const femVol  = exits.filter(r=>r['Gender']==='Female'&&r['Exit Type']==='Voluntary Resignation').length;
+  const malTerm = exits.filter(r=>r['Gender']==='Male'&&r['Exit Type']==='Immediate Termination').length;
+  const malVol  = exits.filter(r=>r['Gender']==='Male'&&r['Exit Type']==='Voluntary Resignation').length;
+
+  // Tenure buckets
+  const tb = {
+    '0–6 months':   active.filter(r=>r['Tenure Bucket']==='0–6 months').length,
+    '6–12 months':  active.filter(r=>r['Tenure Bucket']==='6–12 months').length,
+    '1–2 years':    active.filter(r=>r['Tenure Bucket']==='1–2 years').length,
+    '2–5 years':    active.filter(r=>r['Tenure Bucket']==='2–5 years').length,
+    '5+ years':     active.filter(r=>r['Tenure Bucket']==='5+ years').length,
+  };
+
+  // Tenure by exit type
+  const tenByType = {
+    'Immediate Termination': Math.round(avg(exits.filter(r=>r['Exit Type']==='Immediate Termination').map(r=>r._ten))*10)/10,
+    'Redundancy Exit':       Math.round(avg(exits.filter(r=>r['Exit Type']==='Redundancy Exit').map(r=>r._ten))*10)/10,
+    'Voluntary Resignation': Math.round(avg(exits.filter(r=>r['Exit Type']==='Voluntary Resignation').map(r=>r._ten))*10)/10,
+  };
+
+  // Dept gender & contract
+  const deptGender = DEPTS.map(d => ({
+    dept: d,
+    female: active.filter(r=>r['Department']===d&&r['Gender']==='Female').length,
+    male:   active.filter(r=>r['Department']===d&&r['Gender']==='Male').length,
+  }));
+  const deptContract = DEPTS.map(d => ({
+    dept: d,
+    ft: active.filter(r=>r['Department']===d&&r['Employment Status']==='Full-time').length,
+    ct: active.filter(r=>r['Department']===d&&String(r['Employment Status']||'').includes('Contract')).length,
+  }));
+
+  // Dept exit type
+  const deptExitType = DEPTS.map(d => ({
+    dept: d,
+    term: exits.filter(r=>r['Department']===d&&r['Exit Type']==='Immediate Termination').length,
+    vol:  exits.filter(r=>r['Department']===d&&r['Exit Type']==='Voluntary Resignation').length,
+  }));
+
+  // ── Headcount on a given date ──────────────────────────────────────────────
+  function headcountOn(everyone, snapDt) {
+    return everyone.filter(p => {
+      if (!p.hire) return false;
+      if (p.hire > snapDt) return false;
+      if (p.exit && p.exit <= snapDt) return false;
+      return true;
+    }).length;
+  }
+
+  // Build everyone list
+  // Deduplicate — if person appears in both Active and Exits, use Exits version
+  const exitNamesSet = new Set(exits.map(r => String(r['Full Name']||'').trim().toLowerCase()));
+  const everyone = [
+    ...active
+      .filter(r => !exitNamesSet.has(String(r['Full Name']||'').trim().toLowerCase()))
+      .map(r => ({ hire: parseDate(r['Hire Date']), exit: null })),
+    ...exits.map(r => ({ hire: parseDate(r['Hire Date']), exit: parseDate(r['Exit Date']) }))
+  ];
+
+  // Fix Goodluck's bad date
+  everyone.forEach(p => {
+    if (p.exit && p.exit.getFullYear() === 2026 && p.exit.getMonth() === 10) {
+      p.exit = new Date(2026, 1, 11); // Feb 11 2026
+    }
+  });
+
+  // Monthly snapshots
+  const monthly = [];
+  for (let yr = 2022; yr <= 2026; yr++) {
+    const maxMo = yr === 2026 ? 3 : 12;
+    for (let mo = 1; mo <= maxMo; mo++) {
+      const lastDay = new Date(yr, mo, 0); // last day of month
+      monthly.push({
+        label: `${yr}-${String(mo).padStart(2,'0')}`,
+        headcount: headcountOn(everyone, lastDay),
+        year: yr, month: mo
+      });
+    }
+  }
+
+  // Quarterly snapshots
+  const qtrs2 = [];
+  for (let yr = 2022; yr <= 2026; yr++) {
+    const maxQ = yr === 2026 ? 1 : 4;
+    for (let q = 1; q <= maxQ; q++) {
+      const moEnd = q * 3;
+      const lastDay = new Date(yr, moEnd, 0);
+      const hc = headcountOn(everyone, lastDay);
+      const prev = qtrs2.length > 0 ? qtrs2[qtrs2.length-1].hc : 0;
+      const gr = prev > 0 ? Math.round((hc - prev) / prev * 100 * 10) / 10 : 0;
+      qtrs2.push({ q: `${yr}-Q${q}`, hc, gr });
+    }
+  }
+
+  // Year-on-year table
+  const yoyRows = [];
+  const activeYears = [2022,2023,2024,2025,2026];
+  for (const yr of activeYears) {
+    const jan1  = new Date(yr, 0, 1);
+    const dec31 = new Date(yr, 11, 31);
+    const dayBefore = new Date(yr-1, 11, 31);
+    const snapEnd = yr === 2026 ? new Date(2026, 2, 16) : dec31;
+    const startHc = headcountOn(everyone, dayBefore);
+    const endHc   = headcountOn(everyone, snapEnd);
+    const hiresYr = everyone.filter(p => p.hire && p.hire.getFullYear() === yr).length;
+    const exitsYr = everyone.filter(p => p.exit && p.exit.getFullYear() === yr).length;
+    const avgHc   = (startHc + endHc) / 2;
+    const turnover = avgHc > 0 ? Math.round(exitsYr / avgHc * 100 * 10) / 10 : 0;
+    yoyRows.push({ yr, startHc, endHc, hiresYr, exitsYr, net: hiresYr - exitsYr, turnover });
+  }
+
+  // ── Live payroll from Payroll Raw ────────────────────────────────────────
+  const CEO_NAMES_PAY = ['seye bandele','lekan omotosho','lekan  omotosho'];
+  const payEmps = payraw ? payraw.filter(r => {
+    if (!r['Full Name']) return false;
+    const nm = String(r['Full Name']).trim().toLowerCase();
+    return nm && nm !== 'full name' &&
+           !CEO_NAMES_PAY.includes(nm) &&
+           !nm.includes('executive payroll') && !nm.includes('ceo total') &&
+           !nm.includes('total payroll') && !nm.includes('co-ceo') &&
+           !nm.includes('excluded from') &&
+           !isNaN(parseFloat(r['Gross (Annual)']));
+  }) : [];
+
+  const PAY_DEPTS = ['Customer Success','Operations','Product & Engineering',
+                     'Marketing','People & Culture','Sales','Finance','Personnel'];
+
+  const liveDeptPay = PAY_DEPTS.map(dept => {
+    const staff = payEmps.filter(r => String(r['Department']||'').trim() === dept);
+    if (!staff.length) return null;
+    const sum = col => staff.reduce((s,r)=>s+(parseFloat(r[col])||0),0);
+    const avg = col => sum(col)/staff.length;
+    return {
+      dept, count: staff.length,
+      avgGross:     Math.round(avg('Gross (Annual)')),
+      totalGross:   Math.round(sum('Gross (Annual)')),
+      avgNet:       Math.round(avg('Net (Monthly)')),
+      totalNet:     Math.round(sum('Net (Monthly)')),
+      avgTax:       Math.round(avg('Tax (Annual)')),
+      totalTax:     Math.round(sum('Tax (Annual)')),
+      avgPension:   Math.round(avg('Pension (Annual)')),
+      totalPension: Math.round(sum('Pension (Annual)')),
+      minGross:     Math.round(Math.min(...staff.map(r=>parseFloat(r['Gross (Annual)'])||0))),
+      maxGross:     Math.round(Math.max(...staff.map(r=>parseFloat(r['Gross (Annual)'])||0))),
+    };
+  }).filter(Boolean);
+
+  const liveTotals = payEmps.length ? {
+    totalAnnual:  Math.round(payEmps.reduce((s,r)=>s+(parseFloat(r['Gross (Annual)'])||0),0)),
+    avgGross:     Math.round(payEmps.reduce((s,r)=>s+(parseFloat(r['Gross (Annual)'])||0),0)/payEmps.length),
+    avgNet:       Math.round(payEmps.reduce((s,r)=>s+(parseFloat(r['Net (Monthly)'])||0),0)/payEmps.length),
+    totalNet:     Math.round(payEmps.reduce((s,r)=>s+(parseFloat(r['Net (Monthly)'])||0),0)),
+    totalTax:     Math.round(payEmps.reduce((s,r)=>s+(parseFloat(r['Tax (Annual)'])||0),0)),
+    totalPension: Math.round(payEmps.reduce((s,r)=>s+(parseFloat(r['Pension (Annual)'])||0),0)),
+    count:        payEmps.length,
+  } : null;
+
+  DATA = {
+    filename, reportDate: new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'}),
+    kpi: { totalEver, active: totalActive, exits: totalExits, vol, term, redun,
+           avgActiveTen, avgExitTen, exits2026, shortTen,
+           attritionRate: Math.round(totalExits/totalEver*100),
+           retentionRate: Math.round(totalActive/totalEver*100) },
+    depts: deptRows, qtrData, annual, genAct, genEx,
+    femTerm, femVol, malTerm, malVol,
+    tb, tenByType, deptGender, deptContract, deptExitType,
+    monthly, qtrs2, yoyRows,
+    liveDeptPay, liveTotals,
+  };
+
+  renderAll();
+}
+
+// ── Render everything ─────────────────────────────────────────────────────────
+function renderAll() {
+  if (!DATA) return;
+  document.getElementById('reportDate').textContent = 'Updated ' + DATA.reportDate;
+  document.getElementById('loading').style.display = 'none';
+  // Reset rendered tab tracking so all tabs re-render with new data
+  renderedTabs.clear();
+  renderedTabs.add('overview');
+  renderKPIs();
+  renderCharts();       // overview charts only
+  renderDeptTable();
+  renderFlags();
+  // Re-render payroll if tab was already visited
+  if (document.getElementById('payroll').classList.contains('active')) renderPayroll();
+}
+
+function renderKPIs() {
+  const K = DATA.kpi;
+  document.getElementById('kpi-overview').innerHTML = [
+    ['Total ever employed', K.totalEver, '', 'Active + all exits'],
+    ['Currently active', K.active, 'green', K.retentionRate+'% retention rate'],
+    ['Total exits', K.exits, 'red', K.attritionRate+'% lifetime attrition'],
+    ['Voluntary exits', K.vol, 'green', (K.vol/K.exits*100).toFixed(2)+'% of exits'],
+    ['2026 exits YTD', K.exits2026, 'red', 'Cumulative this year'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  document.getElementById('kpi-active').innerHTML = [
+    ['Active headcount', K.active, '', '8 departments'],
+    ['Avg tenure', K.avgActiveTen+' mo', 'blue', 'Active employees'],
+    ['Terminations', K.term, 'red', Math.round(K.term/K.exits*100)+'% of all exits'],
+    ['Short-tenure exits ≤6mo', K.shortTen, 'amber', Math.round(K.shortTen/K.exits*100)+'% of exits'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  document.getElementById('kpi-attrition').innerHTML = [
+    ['Total exits', K.exits, 'red', 'All time'],
+    ['Voluntary', K.vol, 'green', Math.round(K.vol/K.exits*100)+'%'],
+    ['Terminations', K.term, 'red', Math.round(K.term/K.exits*100)+'%'],
+    ['Avg tenure at exit', K.avgExitTen+' mo', 'amber', 'Overall avg'],
+    ['Left ≤6 months', K.shortTen, 'red', Math.round(K.shortTen/K.exits*100)+'% of exits'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  document.getElementById('kpi-compare').innerHTML = [
+    ['Attrition rate', K.attritionRate+'%', 'red', K.exits+' exits / '+K.totalEver+' total'],
+    ['Retention rate', K.retentionRate+'%', 'green', K.active+' active / '+K.totalEver],
+    ['Tenure gap', '+'+(K.avgActiveTen-K.avgExitTen).toFixed(1)+' mo', 'blue', 'Active vs exited avg'],
+    ['2026 exits YTD', K.exits2026, 'red', 'Accelerating trend'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+}
+
+function renderCharts() {
+  // Overview charts only - called on initial load
+  renderChartsOverview();
+}
+
+function renderChartsOverview() {
+  const D = DATA;
+  const DSHORT = ['P&E','Cust Succ','Sales','Mktg','Ops','Finance','P&C','Personnel'];
+  mk('c_flow',{type:'bar',data:{
+    labels: D.annual.map(r=>r.yr),
+    datasets:[
+      {label:'Hires',data:D.annual.map(r=>r.hires),backgroundColor:'#4d9ef5',borderRadius:3},
+      {label:'Exits',data:D.annual.map(r=>r.exits),backgroundColor:'#f05050',borderRadius:3}
+    ]},options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true}}}});
+
+  mk('c_ovdept',{type:'bar',data:{
+    labels:DSHORT, datasets:[{data:D.depts.map(r=>r.active),
+    backgroundColor:['#4d9ef5','#38c98a','#f05050','#9b7cf4','#378ADD','#f0a030','#2dd4bf','#888080'],borderRadius:3}]
+  },options:{...baseOpts,indexAxis:'y',scales:{x:{...sY,beginAtZero:true},y:sX}}});
+
+  mk('c_gen_a',{type:'doughnut',data:{labels:['Female','Male'],datasets:[{data:[D.genAct.Female,D.genAct.Male],backgroundColor:['#9b7cf4','#4d9ef5'],borderWidth:0,hoverOffset:3}]},options:{...baseOpts,cutout:'62%'}});
+  mk('c_typ_a',{type:'doughnut',data:{labels:['Full-time','Contract'],datasets:[{data:[D.depts.reduce((s,r)=>s+r.active,0)-D.deptContract.reduce((s,r)=>s+r.ct,0), D.deptContract.reduce((s,r)=>s+r.ct,0)],backgroundColor:['#4d9ef5','#2dd4bf'],borderWidth:0,hoverOffset:3}]},options:{...baseOpts,cutout:'62%'}});
+}
+
+function renderChartsActive() {
+  const D = DATA;
+  const DSHORT = ['P&E','Cust Succ','Sales','Mktg','Ops','Finance','P&C','Personnel'];
+  mk('c_adept',{type:'bar',data:{labels:DSHORT,datasets:[{data:D.depts.map(r=>r.active),backgroundColor:['#4d9ef5','#38c98a','#f05050','#9b7cf4','#378ADD','#f0a030','#2dd4bf','#888080'],borderRadius:3}]},options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true}}}});
+
+  mk('c_adeptg',{type:'bar',data:{labels:DSHORT,datasets:[
+    {label:'F',data:D.deptGender.map(r=>r.female),backgroundColor:'#9b7cf4',borderRadius:2},
+    {label:'M',data:D.deptGender.map(r=>r.male),backgroundColor:'#4d9ef5',borderRadius:2}
+  ]},options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true}}}});
+
+  mk('c_adepttyp',{type:'bar',data:{labels:DSHORT,datasets:[
+    {label:'FT',data:D.deptContract.map(r=>r.ft),backgroundColor:'#4d9ef5',borderRadius:2,stack:'s'},
+    {label:'CT',data:D.deptContract.map(r=>r.ct),backgroundColor:'#2dd4bf',borderRadius:2,stack:'s'}
+  ]},options:{...baseOpts,scales:{x:sXr,y:{...sY,stacked:true,beginAtZero:true}}}});
+
+  const TB = D.tb;
+  mk('c_ten_b',{type:'doughnut',data:{labels:Object.keys(TB),datasets:[{data:Object.values(TB),backgroundColor:['#f05050','#f0a030','#f0c860','#38c98a','#4d9ef5'],borderWidth:0,hoverOffset:3}]},options:{...baseOpts,cutout:'58%'}});
+
+  mk('c_tentyp',{type:'bar',data:{labels:['Termination','Redundancy','Voluntary'],datasets:[{data:[D.tenByType['Immediate Termination'],D.tenByType['Redundancy Exit'],D.tenByType['Voluntary Resignation']],backgroundColor:['#f05050','#f0a030','#38c98a'],borderRadius:4}]},options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>v+'m'}}}}});
+}
+
+function renderChartsAttrition() {
+  const D = DATA;
+  mk('c_qtr',{type:'bar',data:{
+    labels:D.qtrData.map(r=>r.q),
+    datasets:[
+      {label:'Term',data:D.qtrData.map(r=>r.term),backgroundColor:'#f05050',borderRadius:2,stack:'s'},
+      {label:'Vol', data:D.qtrData.map(r=>r.vol), backgroundColor:'#38c98a',borderRadius:2,stack:'s'},
+      {label:'Red', data:D.qtrData.map(r=>r.red), backgroundColor:'#f0a030',borderRadius:2,stack:'s'},
+    ]},options:{...baseOpts,scales:{x:{...sXr,ticks:{...sXr.ticks,maxRotation:42}},y:{...sY,stacked:true,beginAtZero:true}}}});
+
+  mk('c_typex',{type:'doughnut',data:{labels:['Voluntary','Termination','Redundancy'],datasets:[{data:[D.kpi.vol,D.kpi.term,D.kpi.redun],backgroundColor:['#38c98a','#f05050','#f0a030'],borderWidth:0,hoverOffset:3}]},options:{...baseOpts,cutout:'60%'}});
+
+  mk('c_gentyp',{type:'bar',data:{labels:['Female','Male'],datasets:[
+    {label:'Term',data:[D.femTerm,D.malTerm],backgroundColor:'#f05050',borderRadius:3},
+    {label:'Vol', data:[D.femVol, D.malVol], backgroundColor:'#38c98a',borderRadius:3}
+  ]},options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true}}}});
+
+  mk('c_tentype2',{type:'bar',data:{labels:['Termination','Redundancy','Voluntary'],datasets:[{data:[D.tenByType['Immediate Termination'],D.tenByType['Redundancy Exit'],D.tenByType['Voluntary Resignation']],backgroundColor:['#f05050','#f0a030','#38c98a'],borderRadius:4}]},options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>v+'m'}}}}});
+
+  mk('c_edept',{type:'bar',data:{labels:['P&E','Cust Succ','Sales','Mktg','Ops','Finance','P&C','Personnel'],datasets:[
+    {label:'Term',data:D.deptExitType.map(r=>r.term),backgroundColor:'#f05050',borderRadius:2,stack:'d'},
+    {label:'Vol', data:D.deptExitType.map(r=>r.vol), backgroundColor:'#38c98a',borderRadius:2,stack:'d'}
+  ]},options:{...baseOpts,scales:{x:sXr,y:{...sY,stacked:true,beginAtZero:true}}}});
+}
+
+function renderChartsCompare() {
+  const D = DATA;
+  const DSHORT = ['P&E','Cust Succ','Sales','Mktg','Ops','Finance','P&C','Personnel'];
+  mk('c_cmp_dept',{type:'bar',data:{labels:DSHORT,datasets:[
+    {label:'Active',data:D.depts.map(r=>r.active),backgroundColor:'rgba(56,201,138,0.8)',borderRadius:3},
+    {label:'Exited',data:D.depts.map(r=>r.exited),backgroundColor:'rgba(240,80,80,0.8)',borderRadius:3}
+  ]},options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true}}}});
+
+  mk('c_cmp_ten',{type:'bar',data:{labels:DSHORT,datasets:[
+    {label:'Active',data:D.depts.map(r=>r.activeTen),backgroundColor:'rgba(56,201,138,0.8)',borderRadius:3},
+    {label:'Exited',data:D.depts.map(r=>r.exitTen),backgroundColor:'rgba(240,80,80,0.8)',borderRadius:3}
+  ]},options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>v+'m'}}}}});
+
+  mk('c_cmp_gen',{type:'bar',data:{labels:['Active','Exited'],datasets:[
+    {label:'Female',data:[D.genAct.Female,D.genEx.Female],backgroundColor:'#9b7cf4',borderRadius:3},
+    {label:'Male',  data:[D.genAct.Male,  D.genEx.Male],  backgroundColor:'#4d9ef5',borderRadius:3}
+  ]},options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true}}}});
+}
+
+function renderDeptTable() {
+  const riskCol = {Critical:'var(--red)',High:'var(--amber)',Medium:'#9b7cf4',Low:'var(--green)',New:'var(--blue)'};
+  const rows = DATA.depts.map(d => `
+    <tr>
+      <td class="dept-name">${d.dept}</td>
+      <td style="color:var(--green);font-weight:600">${d.active}</td>
+      <td style="color:var(--red);font-weight:600">${d.exited}</td>
+      <td>${d.total}</td>
+      <td style="color:${d.exitRatio>45?'var(--red)':d.exitRatio>30?'var(--amber)':'var(--green)'};font-weight:600">${d.exitRatio}%</td>
+      <td style="color:var(--green)">${d.activeTen} mo</td>
+      <td style="color:var(--red)">${d.exitTen} mo</td>
+      <td><span class="risk-badge risk-${d.risk}">${d.risk}</span></td>
+    </tr>`).join('');
+  document.getElementById('dept-table').innerHTML = `
+    <thead><tr>
+      <th>Department</th><th>Active</th><th>Exited</th><th>Total</th>
+      <th>Exit Ratio</th><th>Active Avg Tenure</th><th>Exit Avg Tenure</th><th>Risk</th>
+    </tr></thead><tbody>${rows}</tbody>`;
+}
+
+function renderFlags() {
+  const D = DATA;
+  const K = D.kpi;
+  const critical = [
+    `🔴 <strong>Sales: ${D.depts.find(r=>r.dept==='Sales').exitRatio}% exit ratio</strong> — more people have exited (${D.depts.find(r=>r.dept==='Sales').exited}) than are currently active (${D.depts.find(r=>r.dept==='Sales').active}). Avg active tenure is only ${D.depts.find(r=>r.dept==='Sales').activeTen} months and the majority of exits were voluntary.`,
+    `🔴 <strong>${K.attritionRate}% lifetime attrition rate</strong> — ${K.exits} exits from a base of ${K.totalEver} total employees ever hired. Healthy org benchmark is 10–15% annually.`,
+    `🔴 <strong>2026 is accelerating</strong> — ${K.exits2026} exits so far this year. Monitor this monthly against headcount.`,
+    `🔴 <strong>${K.shortTen} employees left within 6 months of hire</strong> (${Math.round(K.shortTen/K.exits*100)}% of all exits) — signals onboarding or selection failures.`,
+  ];
+  const high = [
+    `⚠ <strong>Finance at ${D.depts.find(r=>r.dept==='Finance').exitRatio}% exit ratio</strong> — equal active and exited headcount. Early-tenure exits suggest role clarity or compensation issues.`,
+    `⚠ <strong>People & Culture has ${D.depts.find(r=>r.dept==='People & Culture').exitRatio}% exit ratio</strong> — the HR function itself has seen significant exits. Review team stability.`,
+    `⚠ <strong>Males terminated at ${Math.round(D.malTerm/(D.malTerm+D.femTerm)*100)}% of terminations</strong> — ${D.malTerm} of ${D.kpi.term} total. Warrants review of hiring calibration.`,
+    `⚠ <strong>${(D.kpi.vol/K.exits*100).toFixed(2)}% of exits are voluntary</strong> — people are choosing to leave. Retention programmes targeting engaged staff have the highest ROI.`,
+  ];
+  const good = [
+    `✅ <strong>Customer Success is healthiest</strong> — ${D.depts.find(r=>r.dept==='Customer Success').active} active, only ${D.depts.find(r=>r.dept==='Customer Success').exited} exits (${D.depts.find(r=>r.dept==='Customer Success').exitRatio}% ratio). Best retention in the company.`,
+    `✅ <strong>Voluntary resigners stay ${D.tenByType['Voluntary Resignation']} months avg</strong> vs ${D.tenByType['Immediate Termination']} months for terminations — engaged staff are your highest-value retention audience.`,
+    `✅ <strong>People & Culture has ${D.depts.find(r=>r.dept==='People & Culture').active} active staff</strong> — the HR function being built is the right response to the attrition trend.`,
+  ];
+
+  document.getElementById('flags-critical').innerHTML = critical.map(f=>`<div class="flag flag-r">${f}</div>`).join('');
+  document.getElementById('flags-high').innerHTML    = high.map(f=>`<div class="flag flag-a">${f}</div>`).join('');
+  document.getElementById('flags-good').innerHTML    = good.map(f=>`<div class="flag flag-g">${f}</div>`).join('');
+}
+
+function renderTrends() {
+  const D = DATA;
+  if (!D.monthly || !D.yoyRows) return;
+
+  // KPIs
+  const latest = D.yoyRows[D.yoyRows.length-1];
+  const prev   = D.yoyRows[D.yoyRows.length-2];
+  const peakHc = Math.max(...D.monthly.map(m=>m.headcount));
+  const peakMo = D.monthly.find(m=>m.headcount===peakHc);
+  document.getElementById('kpi-trends').innerHTML = [
+    ['Current headcount', latest.endHc, 'green', 'As of Mar 2026'],
+    ['Peak headcount', peakHc, 'blue', `Reached ${peakMo ? peakMo.label : ''}`],
+    ['Best growth year', '2025', 'green', '+34 net headcount'],
+    ['Lowest turnover', '26.5%', 'green', '2025 — best year'],
+    ['2026 trend', latest.net > 0 ? '+'+latest.net : latest.net, latest.net >= 0 ? 'green' : 'red', 'Net headcount YTD'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  // Monthly line chart
+  mk('c_monthly',{type:'line',data:{
+    labels: D.monthly.map(m=>m.label),
+    datasets:[{
+      data: D.monthly.map(m=>m.headcount),
+      borderColor:'#4d9ef5', backgroundColor:'rgba(77,158,245,0.08)',
+      borderWidth:2.5, pointRadius:2, pointBackgroundColor:'#4d9ef5',
+      fill:true, tension:0.35
+    }]
+  },options:{...baseOpts,scales:{
+    x:{...sXr,ticks:{...sXr.ticks,maxRotation:45,callback:(v,i)=>{ const l=D.monthly[i].label; return l.endsWith('-01')||l.endsWith('-07')?l:null; }}},
+    y:{...sY,beginAtZero:false,suggestedMin:0}
+  }}});
+
+  // YoY bar
+  mk('c_yoy',{type:'bar',data:{
+    labels: D.yoyRows.map(r=>r.yr),
+    datasets:[
+      {label:'Start',data:D.yoyRows.map(r=>r.startHc),backgroundColor:'rgba(77,158,245,0.7)',borderRadius:3},
+      {label:'End',  data:D.yoyRows.map(r=>r.endHc),  backgroundColor:'rgba(56,201,138,0.8)',borderRadius:3},
+    ]
+  },options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true}}}});
+
+  // Turnover rate
+  mk('c_turnover',{type:'bar',data:{
+    labels: D.yoyRows.map(r=>r.yr),
+    datasets:[{
+      data: D.yoyRows.map(r=>r.turnover),
+      backgroundColor: D.yoyRows.map(r=>r.turnover>50?'#f05050':r.turnover>30?'#f0a030':'#38c98a'),
+      borderRadius:4
+    }]
+  },options:{...baseOpts,scales:{x:sX,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>v+'%'}}}}});
+
+  // Quarterly growth
+  mk('c_qtr_growth',{type:'bar',data:{
+    labels: D.qtrs2.map(q=>q.q),
+    datasets:[
+      {label:'Headcount',data:D.qtrs2.map(q=>q.hc),backgroundColor:'rgba(77,158,245,0.6)',borderRadius:3,yAxisID:'y'},
+      {label:'Growth %', data:D.qtrs2.map(q=>q.gr),type:'line',borderColor:'#f0a030',backgroundColor:'transparent',
+       borderWidth:2,pointRadius:3,pointBackgroundColor:'#f0a030',yAxisID:'y1',tension:0.3},
+    ]
+  },options:{...baseOpts,scales:{
+    x:sXr,
+    y:{...sY,beginAtZero:true,position:'left'},
+    y1:{ticks:{color:LB,font:{size:10},callback:v=>v+'%'},grid:{display:false},position:'right',beginAtZero:false}
+  }}});
+
+  // YoY table
+  const tbl = D.yoyRows.map((r,i) => {
+    const netCol = r.net > 0 ? 'var(--green)' : r.net < 0 ? 'var(--red)' : 'var(--muted)';
+    const toCol  = r.turnover > 50 ? 'var(--red)' : r.turnover > 30 ? 'var(--amber)' : 'var(--green)';
+    return `<tr>
+      <td style="font-weight:600">${r.yr}${r.yr===2026?' *':''}</td>
+      <td style="text-align:center;color:var(--blue);font-weight:600">${r.startHc}</td>
+      <td style="text-align:center;color:var(--green);font-weight:600">${r.hiresYr}</td>
+      <td style="text-align:center;color:var(--red);font-weight:600">${r.exitsYr}</td>
+      <td style="text-align:center;color:${netCol};font-weight:600">${r.net > 0 ? '+'+r.net : r.net}</td>
+      <td style="text-align:center;color:var(--green);font-weight:600">${r.endHc}${r.yr===2026?' *':''}</td>
+      <td style="text-align:center;color:${toCol};font-weight:600">${r.turnover}%</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('yoy-table').innerHTML = `
+    <thead><tr>
+      <th>Year</th><th>Start HC</th><th>Hires</th><th>Exits</th>
+      <th>Net</th><th>End HC</th><th>Turnover Rate</th>
+    </tr></thead>
+    <tbody>${tbl}</tbody>
+    <tfoot><tr><td colspan="7" style="font-size:10px;color:var(--dim);padding-top:8px">* 2026 end = as of 16 March 2026</td></tr></tfoot>`;
+}
+
+// ── Snapshot data also needs everyone for trends ───────────────────────────
+(function loadInitial() {
+  // Load embedded snapshot data
+  const snapshot = {"filename":"PaidHR_Workforce_Complete.xlsx","reportDate":"March 2026","kpi":{"totalEver":114,"active":64,"exits":51,"vol":30,"term":20,"redun":1,"avgActiveTen":12.5,"avgExitTen":13.2,"exits2026":9,"shortTen":19,"volPct":58.82,"attritionRate":44,"retentionRate":56},"depts":[{"dept":"Product & Engineering","active":22,"exited":13,"total":35,"exitRatio":37,"activeTen":13.0,"exitTen":16.9,"risk":"Medium"},{"dept":"Customer Success","active":15,"exited":6,"total":21,"exitRatio":29,"activeTen":11.7,"exitTen":14.0,"risk":"Medium"},{"dept":"Sales","active":9,"exited":11,"total":20,"exitRatio":55,"activeTen":7.7,"exitTen":9.9,"risk":"Critical"},{"dept":"Marketing","active":6,"exited":4,"total":10,"exitRatio":40,"activeTen":9.3,"exitTen":17.5,"risk":"High"},{"dept":"Operations","active":3,"exited":3,"total":6,"exitRatio":50,"activeTen":21.9,"exitTen":19.4,"risk":"Critical"},{"dept":"Finance","active":4,"exited":4,"total":8,"exitRatio":50,"activeTen":16.6,"exitTen":11.2,"risk":"Critical"},{"dept":"People & Culture","active":4,"exited":5,"total":9,"exitRatio":56,"activeTen":15.9,"exitTen":9.1,"risk":"Critical"},{"dept":"Personnel","active":1,"exited":1,"total":2,"exitRatio":50,"activeTen":18.2,"exitTen":15.6,"risk":"Critical"}],"qtrData":[{"q":"2022-Q1","term":1,"vol":1,"red":0},{"q":"2022-Q3","term":0,"vol":1,"red":0},{"q":"2023-Q1","term":2,"vol":2,"red":0},{"q":"2023-Q2","term":1,"vol":1,"red":0},{"q":"2023-Q3","term":2,"vol":0,"red":0},{"q":"2023-Q4","term":2,"vol":1,"red":1},{"q":"2024-Q1","term":1,"vol":1,"red":0},{"q":"2024-Q2","term":2,"vol":4,"red":0},{"q":"2024-Q3","term":2,"vol":1,"red":0},{"q":"2024-Q4","term":2,"vol":1,"red":0},{"q":"2025-Q1","term":1,"vol":1,"red":0},{"q":"2025-Q2","term":1,"vol":2,"red":0},{"q":"2025-Q3","term":2,"vol":6,"red":0},{"q":"2026-Q1","term":1,"vol":7,"red":0}],"annual":[{"yr":2022,"hires":15,"exits":3},{"yr":2023,"hires":27,"exits":12},{"yr":2024,"hires":19,"exits":14},{"yr":2025,"hires":48,"exits":13},{"yr":2026,"hires":6,"exits":8}],"genAct":{"Male":41,"Female":23},"genEx":{"Male":25,"Female":26},"femTerm":7,"femVol":18,"malTerm":13,"malVol":12,"tb":{"0\u20136 months":19,"2\u20135 years":12,"1\u20132 years":10,"6\u201312 months":10},"tenByType":{"Immediate Termination":10.6,"Redundancy Exit":11.7,"Voluntary Resignation":15.1},"deptGender":[{"dept":"Product & Engineering","female":3,"male":19},{"dept":"Customer Success","female":10,"male":5},{"dept":"Sales","female":3,"male":6},{"dept":"Marketing","female":2,"male":4},{"dept":"Operations","female":1,"male":2},{"dept":"Finance","female":2,"male":2},{"dept":"People & Culture","female":2,"male":2},{"dept":"Personnel","female":0,"male":1}],"deptContract":[{"dept":"Product & Engineering","ft":17,"ct":5},{"dept":"Customer Success","ft":11,"ct":4},{"dept":"Sales","ft":9,"ct":0},{"dept":"Marketing","ft":4,"ct":2},{"dept":"Operations","ft":2,"ct":1},{"dept":"Finance","ft":4,"ct":0},{"dept":"People & Culture","ft":4,"ct":0},{"dept":"Personnel","ft":1,"ct":0}],"deptExitType":[{"dept":"Product & Engineering","term":6,"vol":7},{"dept":"Customer Success","term":1,"vol":5},{"dept":"Sales","term":3,"vol":8},{"dept":"Marketing","term":2,"vol":2},{"dept":"Operations","term":1,"vol":2},{"dept":"Finance","term":1,"vol":3},{"dept":"People & Culture","term":3,"vol":2},{"dept":"Personnel","term":1,"vol":0}],"monthly":[{"label":"Jan 2022","headcount":4},{"label":"Feb 2022","headcount":4},{"label":"Mar 2022","headcount":4},{"label":"Apr 2022","headcount":4},{"label":"May 2022","headcount":8},{"label":"Jun 2022","headcount":9},{"label":"Jul 2022","headcount":9},{"label":"Aug 2022","headcount":9},{"label":"Sep 2022","headcount":8},{"label":"Oct 2022","headcount":8},{"label":"Nov 2022","headcount":12},{"label":"Dec 2022","headcount":12},{"label":"Jan 2023","headcount":18},{"label":"Feb 2023","headcount":18},{"label":"Mar 2023","headcount":19},{"label":"Apr 2023","headcount":20},{"label":"May 2023","headcount":21},{"label":"Jun 2023","headcount":23},{"label":"Jul 2023","headcount":22},{"label":"Aug 2023","headcount":25},{"label":"Sep 2023","headcount":29},{"label":"Oct 2023","headcount":27},{"label":"Nov 2023","headcount":27},{"label":"Dec 2023","headcount":27},{"label":"Jan 2024","headcount":36},{"label":"Feb 2024","headcount":36},{"label":"Mar 2024","headcount":37},{"label":"Apr 2024","headcount":36},{"label":"May 2024","headcount":36},{"label":"Jun 2024","headcount":32},{"label":"Jul 2024","headcount":32},{"label":"Aug 2024","headcount":32},{"label":"Sep 2024","headcount":32},{"label":"Oct 2024","headcount":31},{"label":"Nov 2024","headcount":33},{"label":"Dec 2024","headcount":32},{"label":"Jan 2025","headcount":34},{"label":"Feb 2025","headcount":36},{"label":"Mar 2025","headcount":36},{"label":"Apr 2025","headcount":38},{"label":"May 2025","headcount":38},{"label":"Jun 2025","headcount":36},{"label":"Jul 2025","headcount":53},{"label":"Aug 2025","headcount":50},{"label":"Sep 2025","headcount":58},{"label":"Oct 2025","headcount":62},{"label":"Nov 2025","headcount":66},{"label":"Dec 2025","headcount":66},{"label":"Jan 2026","headcount":63},{"label":"Feb 2026","headcount":63},{"label":"Mar 2026","headcount":64}],"qtrs2":[{"q":"2022-Q1","hc":4,"gr":0},{"q":"2022-Q2","hc":9,"gr":125.0},{"q":"2022-Q3","hc":8,"gr":-11.1},{"q":"2022-Q4","hc":12,"gr":50.0},{"q":"2023-Q1","hc":19,"gr":58.3},{"q":"2023-Q2","hc":23,"gr":21.1},{"q":"2023-Q3","hc":29,"gr":26.1},{"q":"2023-Q4","hc":27,"gr":-6.9},{"q":"2024-Q1","hc":37,"gr":37.0},{"q":"2024-Q2","hc":32,"gr":-13.5},{"q":"2024-Q3","hc":32,"gr":0.0},{"q":"2024-Q4","hc":32,"gr":0.0},{"q":"2025-Q1","hc":36,"gr":12.5},{"q":"2025-Q2","hc":36,"gr":0.0},{"q":"2025-Q3","hc":58,"gr":61.1},{"q":"2025-Q4","hc":66,"gr":13.8},{"q":"2026-Q1","hc":64,"gr":-3.0}],"yoyRows":[{"yr":2022,"startHc":0,"endHc":12,"hiresYr":15,"exitsYr":3,"net":12,"turnover":50.0},{"yr":2023,"startHc":12,"endHc":27,"hiresYr":27,"exitsYr":12,"net":15,"turnover":61.5},{"yr":2024,"startHc":27,"endHc":32,"hiresYr":19,"exitsYr":14,"net":5,"turnover":47.5},{"yr":2025,"startHc":32,"endHc":66,"hiresYr":47,"exitsYr":13,"net":34,"turnover":26.5},{"yr":2026,"startHc":66,"endHc":64,"hiresYr":6,"exitsYr":8,"net":-2,"turnover":12.3}]};
+  DATA = snapshot;
+  // Don't render yet — wait for user to pass the name gate
+})();
+
+// ── Supabase config ───────────────────────────────────────────────────────────
+const SUPA_URL = 'https://dxmansokotqelkvpwmik.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4bWFuc29rb3RxZWxrdnB3bWlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MzYwNjgsImV4cCI6MjA4OTQxMjA2OH0.N2QQTb4PcQEay7yBF9WlgaAdBXoI_ZOeQAGF1DtyNtM';
+
+async function supaInsert(data) {
+  try {
+    const res = await fetch(SUPA_URL+'/rest/v1/viewer_log', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer '+SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function supaFetch() {
+  try {
+    const res = await fetch(SUPA_URL+'/rest/v1/viewer_log?select=*&order=visited_at.desc&limit=500', {
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY}
+    });
+    if (res.ok) return await res.json();
+    return null;
+  } catch(e) { return null; }
+}
+
+async function supaDelete() {
+  try {
+    await fetch(SUPA_URL+'/rest/v1/viewer_log?id=gte.0', {
+      method: 'DELETE',
+      headers: {'apikey': SUPA_KEY, 'Authorization': 'Bearer '+SUPA_KEY}
+    });
+  } catch(e) {}
+}
+
+
+// ── NAME GATE & VIEWER LOG ────────────────────────────────────────────────────
+const LOG_KEY = 'paidhr_viewer_log';
+const SESSION_KEY = 'paidhr_current_user';
+
+function getLog() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveLog(log) {
+  try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {}
+}
+
+async function enterDashboard() {
+  const nameEl  = document.getElementById('gate-name');
+  const emailEl = document.getElementById('gate-email');
+  const name    = nameEl.value.trim();
+  const email   = emailEl.value.trim();
+  const errEl   = document.getElementById('gate-error');
+
+  if (!name) {
+    errEl.textContent = 'Please enter your full name to continue';
+    errEl.style.display = 'block';
+    nameEl.focus(); return;
+  }
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    errEl.textContent = 'Please enter a valid email address';
+    errEl.style.display = 'block';
+    emailEl.focus(); return;
+  }
+  const passwordEl = document.getElementById('gate-password');
+  const password   = passwordEl.value;
+  if (password !== 'p@d3hcm!@#.') {
+    errEl.textContent = 'Incorrect password. Please try again.';
+    errEl.style.display = 'block';
+    passwordEl.value = '';
+    passwordEl.focus(); return;
+  }
+  errEl.style.display = 'none';
+
+  // Record the visit
+  const now = new Date();
+  const entry = {
+    name,
+    email,
+    timestamp: now.toISOString(),
+    displayTime: now.toLocaleString('en-GB', {
+      day:'2-digit', month:'short', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    }),
+    tabsVisited: ['Overview'],
+    device: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+  };
+
+  // Save to Supabase central log
+  await supaInsert({
+    name:       entry.name,
+    email:      entry.email,
+    visited_at: entry.timestamp,
+    tabs:       'Overview',
+    device:     entry.device
+  });
+
+  // Also save locally as backup
+  const log = getLog();
+  const todayStr = now.toDateString();
+  const existing = log.find(e => e.email && e.email.toLowerCase() === email.toLowerCase() &&
+    new Date(e.timestamp).toDateString() === todayStr);
+  if (!existing) {
+    log.unshift(entry);
+    if (log.length > 200) log.splice(200);
+    saveLog(log);
+  }
+
+  // Store current session user
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({name, email})); } catch {}
+
+  // Hide gate and render dashboard
+  document.getElementById('name-gate').style.display = 'none';
+  document.getElementById('loading').style.display = 'flex';
+  setTimeout(() => {
+    renderAll();
+  }, 50);
+}
+
+// Track rendered tabs for lazy chart loading
+const renderedTabs = new Set();
+
+function showTab(id) {
+  // Switch active tab and panel
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.getAttribute('onclick').includes("'"+id+"'")));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+
+  // Lazy render charts on first visit to each tab
+  if (DATA && !renderedTabs.has(id)) {
+    renderedTabs.add(id);
+    setTimeout(() => {
+      if (id === 'active')    renderChartsActive();
+      if (id === 'attrition') renderChartsAttrition();
+      if (id === 'compare')   renderChartsCompare();
+      if (id === 'trends')    renderTrends();
+      if (id === 'payroll')   renderPayroll();
+      if (id === 'viewers')   { unlockViewerIfAdmin(); renderViewerLog(); }
+    }, 80);
+  } else if (id === 'viewers') {
+    setTimeout(() => { unlockViewerIfAdmin(); renderViewerLog(); }, 80);
+  }
+
+  // Track visit in viewer log
+  try {
+    const userRaw = sessionStorage.getItem(SESSION_KEY);
+    if (!userRaw) return;
+    let user; try { user = JSON.parse(userRaw); } catch { return; }
+    const log = getLog();
+    const todayStr = new Date().toDateString();
+    const entry = log.find(e => e.email && e.email.toLowerCase() === user.email.toLowerCase() &&
+      new Date(e.timestamp).toDateString() === todayStr);
+    if (entry && !entry.tabsVisited.includes(id)) {
+      entry.tabsVisited.push(id);
+      saveLog(log);
+    }
+  } catch {}
+}
+
+async function renderViewerLog() {
+  const el = document.getElementById('viewer-log-entries');
+  const kpiEl = document.getElementById('kpi-viewers');
+  if (!el || !kpiEl) return;
+
+  el.innerHTML = '<div class="log-empty" style="color:var(--blue)">Loading viewer log...</div>';
+
+  const rows = await supaFetch();
+
+  if (!rows || !rows.length) {
+    el.innerHTML = '<div class="log-empty">No viewers logged yet. Share the dashboard link to start tracking.</div>';
+    kpiEl.innerHTML = [
+      ['Total visits', 0, 'blue', 'All time · all devices'],
+      ['Unique viewers', 0, 'green', 'Distinct emails'],
+      ['Visits today', 0, 'amber', new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})],
+      ['Last viewed', '—', '', 'Most recent'],
+    ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+    return;
+  }
+
+  const byEmail = {};
+  rows.forEach(r => {
+    const k = (r.email || r.name || '').toLowerCase();
+    if (!byEmail[k]) byEmail[k] = { name: r.name, email: r.email, sessions: [], latest: r.visited_at };
+    byEmail[k].sessions.push(r);
+  });
+
+  el.innerHTML = `
+    <div class="log-entry-row" style="opacity:0.5;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;grid-template-columns:1fr 1fr 130px 60px">
+      <span>Name</span><span>Email</span><span>Last visit</span><span style="text-align:right">Visits</span>
+    </div>
+    ${Object.values(byEmail).map(v => {
+      const lastDt = new Date(v.latest);
+      const lastStr = lastDt.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const lastTabs = v.sessions[0].tabs || '';
+      return `<div class="log-entry-row" style="grid-template-columns:1fr 1fr 130px 60px">
+        <div><div class="log-name">${v.name||'—'}</div><div class="log-tabs">${lastTabs}</div></div>
+        <div class="log-time" style="color:var(--blue)">${v.email||'—'}</div>
+        <div class="log-time">${lastStr}</div>
+        <div class="log-sessions">${v.sessions.length}</div>
+      </div>`;
+    }).join('')}`;
+
+  const totalVisits = rows.length;
+  const uniqueViewers = new Set(rows.map(r => (r.email||r.name||'').toLowerCase())).size;
+  const today = new Date().toDateString();
+  const todayVisits = rows.filter(r => new Date(r.visited_at).toDateString() === today).length;
+  const lastVisit = rows[0] ? new Date(rows[0].visited_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+
+  kpiEl.innerHTML = [
+    ['Total visits', totalVisits, 'blue', 'All time · all devices'],
+    ['Unique viewers', uniqueViewers, 'green', 'Distinct emails'],
+    ['Visits today', todayVisits, 'amber', new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})],
+    ['Last viewed', lastVisit, '', 'Most recent'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+}
+
+async function clearViewerLog() {
+  if (confirm('Clear the entire viewer log from all devices? This cannot be undone.')) {
+    await supaDelete();
+    saveLog([]);
+    renderViewerLog();
+  }
+}
+
+// Auto-focus name input when gate is visible
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const inp = document.getElementById('gate-name');
+    if (inp) inp.focus();
+  }, 100);
+});
+
+
+// ── Admin password for viewer log ────────────────────────────────────────────
+const ADMIN_PW = 'P@ssw0rd';
+const ADMIN_KEY = 'paidhr_admin_unlocked';
+
+function checkAdminPw() {
+  const input = document.getElementById('admin-pw-input').value;
+  if (input === ADMIN_PW) {
+    sessionStorage.setItem(ADMIN_KEY, '1');
+    document.getElementById('viewer-lock').style.display = 'none';
+    document.getElementById('viewer-log-content').style.display = 'block';
+    renderViewerLog();
+  } else {
+    document.getElementById('admin-pw-error').style.display = 'block';
+    document.getElementById('admin-pw-input').value = '';
+    document.getElementById('admin-pw-input').focus();
+  }
+}
+
+function unlockViewerIfAdmin() {
+  if (sessionStorage.getItem(ADMIN_KEY) === '1') {
+    const lock = document.getElementById('viewer-lock');
+    const logContent = document.getElementById('viewer-log-content');
+    if (lock) lock.style.display = 'none';
+    if (logContent) logContent.style.display = 'block';
+  }
+}
+
+
+// ── Payroll data ──────────────────────────────────────────────────────────────
+const PAYROLL = [{"dept":"Product & Engineering","count":22,"avgGross":10804349.13,"totalGross":237695680.91,"avgNet":831855.9,"totalNet":18300829.83,"avgTax":525622.79,"totalTax":11563701.46,"avgPension":667025.03,"totalPension":14674550.76,"minGross":2426030.44,"maxGross":19728950.78},{"dept":"Customer Success","count":15,"avgGross":7856720.5,"totalGross":117850807.48,"avgNet":606707.56,"totalNet":9100613.37,"avgTax":345516.88,"totalTax":5182753.27,"avgPension":519104.09,"totalPension":7786561.34,"minGross":2426030.44,"maxGross":33040754.83},{"dept":"Sales","count":9,"avgGross":9982521.3,"totalGross":89842691.7,"avgNet":766712.2,"totalNet":6900409.83,"avgTax":462534.19,"totalTax":4162807.75,"avgPension":718741.54,"totalPension":6468673.83,"minGross":5128133.34,"maxGross":17067028.43},{"dept":"Marketing","count":6,"avgGross":5752609.86,"totalGross":34515659.17,"avgNet":450032.73,"totalNet":2700196.37,"avgTax":207628.33,"totalTax":1245770.0,"avgPension":325324.96,"totalPension":1951949.79,"minGross":2426030.44,"maxGross":10413081.99},{"dept":"People & Culture","count":4,"avgGross":9623179.3,"totalGross":38492717.22,"avgNet":737541.4,"totalNet":2950165.61,"avgTax":464740.76,"totalTax":1858963.04,"avgPension":692868.9,"totalPension":2771475.62,"minGross":1860040.56,"maxGross":23720912.31},{"dept":"Finance","count":4,"avgGross":13098629.54,"totalGross":52394518.14,"avgNet":1000025.34,"totalNet":4000101.35,"avgTax":679169.42,"totalTax":2716677.69,"avgPension":943101.32,"totalPension":3772405.3,"minGross":3812547.98,"maxGross":33040754.83},{"dept":"Operations","count":3,"avgGross":9445698.98,"totalGross":28337096.94,"avgNet":733357.6,"totalNet":2200072.81,"avgTax":451081.4,"totalTax":1353244.21,"avgPension":437234.33,"totalPension":1311702.98,"minGross":3812547.98,"maxGross":14405548.96},{"dept":"Personnel","count":1,"avgGross":3155987.65,"totalGross":3155987.65,"avgNet":250065.46,"totalNet":250065.46,"avgTax":54210.52,"totalTax":54210.52,"avgPension":227231.11,"totalPension":227231.11,"minGross":3155987.65,"maxGross":3155987.65}];
+
+const PAYROLL_TOTALS = {"totalAnnual":602285159.21,"avgGross":9410705.61,"avgNet":725038.35,"totalNet":46402454.63,"totalTax":28138127.94,"totalPension":38964550.73,"count":64,"ceoGrossAnnual":39457901.56,"ceoNetMonthly":3000129.78,"ceoTaxAnnual":2193691.4,"ceoPensionAnnual":2840968.92,"grandTotalAnnual":641743060.77,"grandTotalNet":49402584.41,"grandTotalTax":30331819.34,"grandTotalPension":41805519.65};
+
+function fmtN(n) {
+  if (n >= 1e9) return '₦' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '₦' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '₦' + (n/1e3).toFixed(0) + 'K';
+  return '₦' + n.toFixed(0);
+}
+
+function renderPayroll() {
+  // Use live data from uploaded Excel if available, else fall back to snapshot
+  const P = (DATA && DATA.liveDeptPay && DATA.liveDeptPay.length) ? DATA.liveDeptPay : PAYROLL;
+  const T = (DATA && DATA.liveTotals) ? DATA.liveTotals : PAYROLL_TOTALS;
+  const sorted = [...P].sort((a,b) => b.avgGross - a.avgGross);
+  const labels = sorted.map(d => d.dept.replace('Product & Engineering','P&E').replace('Customer Success','Cust Succ').replace('People & Culture','P&C').replace('No Department','No Dept'));
+  const compAvg = T.avgGross;
+
+  // KPIs
+  document.getElementById('kpi-payroll').innerHTML = [
+    ['Total Annual Payroll', fmtN(T.totalAnnual), 'blue', T.count ? T.count+' employees' : DATA ? DATA.kpi.active+' employees' : '64 employees'],
+    ['Total Monthly Net', fmtN(T.totalNet), 'green', 'Take-home all staff'],
+    ['Avg Gross Annual', fmtN(T.avgGross), '', 'Per employee'],
+    ['Avg Net Monthly', fmtN(T.avgNet), '', 'Per employee'],
+    ['Total Tax (Annual)', fmtN(T.totalTax), 'red', 'All employees'],
+    ['Total Pension (Annual)', fmtN(T.totalPension), 'amber', 'All employees'],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value ${c}" style="font-size:16px">${v}</div><div class="kpi-sub">${s}</div></div>`).join('');
+
+  // CEO summary strip
+  document.getElementById('kpi-payroll').insertAdjacentHTML('afterend', `
+    <div style="background:rgba(240,160,48,0.07);border:1px solid rgba(240,160,48,0.2);border-radius:10px;padding:10px 20px;margin-bottom:14px;display:flex;gap:40px;flex-wrap:wrap;font-size:12px;align-items:center">
+      <span style="font-weight:700;color:#f0a030">Co-CEO Payroll (excl. from dept figures):</span>
+      <span>Gross annual <strong style="color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoGrossAnnual)}</strong></span>
+      <span>Monthly net <strong style="color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoNetMonthly)}</strong></span>
+      <span>Tax annual <strong style="color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoTaxAnnual)}</strong></span>
+      <span>Pension annual <strong style="color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoPensionAnnual)}</strong></span>
+      <span style="margin-left:auto;font-weight:700;color:var(--blue)">Grand total payroll incl. Co-CEOs: ${fmtN(PAYROLL_TOTALS.grandTotalAnnual)}/yr</span>
+    </div>`);
+
+  // Avg gross bar with company avg line
+  mk('c_pay_avg',{type:'bar',data:{
+    labels,
+    datasets:[{
+      data: sorted.map(d=>d.avgGross),
+      backgroundColor: sorted.map(d => d.avgGross >= compAvg ? 'rgba(56,201,138,0.8)' : 'rgba(77,158,245,0.7)'),
+      borderRadius:4
+    }]
+  },options:{...baseOpts,
+    plugins:{...baseOpts.plugins,
+      annotation:{annotations:{line1:{type:'line',yMin:compAvg,yMax:compAvg,borderColor:'rgba(240,160,48,0.8)',borderWidth:2,borderDash:[5,5]}}}
+    },
+    scales:{x:sXr, y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Total payroll bar
+  const sortedTotal = [...P].sort((a,b)=>b.totalGross-a.totalGross);
+  mk('c_pay_total',{type:'bar',data:{
+    labels: sortedTotal.map(d=>d.dept.replace('Product & Engineering','P&E').replace('Customer Success','Cust Succ').replace('People & Culture','P&C').replace('No Department','No Dept')),
+    datasets:[{data:sortedTotal.map(d=>d.totalGross),backgroundColor:'#4d9ef5',borderRadius:3}]
+  },options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Avg net monthly
+  mk('c_pay_net',{type:'bar',data:{
+    labels,
+    datasets:[{data:sorted.map(d=>d.avgNet),backgroundColor:'#38c98a',borderRadius:3}]
+  },options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Pay range
+  mk('c_pay_range',{type:'bar',data:{
+    labels,
+    datasets:[
+      {label:'Min', data:sorted.map(d=>d.minGross), backgroundColor:'rgba(240,80,80,0.7)', borderRadius:2},
+      {label:'Avg', data:sorted.map(d=>d.avgGross), backgroundColor:'rgba(77,158,245,0.8)', borderRadius:2},
+      {label:'Max', data:sorted.map(d=>d.maxGross), backgroundColor:'rgba(56,201,138,0.7)', borderRadius:2},
+    ]
+  },options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Avg tax vs avg pension
+  mk('c_pay_tax',{type:'bar',data:{
+    labels,
+    datasets:[
+      {label:'Avg Tax',     data:sorted.map(d=>d.avgTax),     backgroundColor:'rgba(240,160,48,0.8)',  borderRadius:2},
+      {label:'Avg Pension', data:sorted.map(d=>d.avgPension), backgroundColor:'rgba(155,124,244,0.8)', borderRadius:2},
+    ]
+  },options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Total pension per dept
+  const sortedPension = [...P].sort((a,b)=>b.totalPension-a.totalPension);
+  mk('c_pay_pension',{type:'bar',data:{
+    labels: sortedPension.map(d=>d.dept.replace('Product & Engineering','P&E').replace('Customer Success','Cust Succ').replace('People & Culture','P&C').replace('No Department','No Dept')),
+    datasets:[{data:sortedPension.map(d=>d.totalPension),backgroundColor:'#9b7cf4',borderRadius:3}]
+  },options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Total tax per dept
+  const sortedTax = [...P].sort((a,b)=>b.totalTax-a.totalTax);
+  mk('c_pay_taxdept',{type:'bar',data:{
+    labels: sortedTax.map(d=>d.dept.replace('Product & Engineering','P&E').replace('Customer Success','Cust Succ').replace('People & Culture','P&C').replace('No Department','No Dept')),
+    datasets:[{data:sortedTax.map(d=>d.totalTax),backgroundColor:'#f0a030',borderRadius:3}]
+  },options:{...baseOpts,scales:{x:sXr,y:{...sY,beginAtZero:true,ticks:{...sY.ticks,callback:v=>fmtN(v)}}}}});
+
+  // Summary table
+  document.getElementById('payroll-table').innerHTML = `
+    <thead><tr>
+      <th>Department</th><th>Staff</th><th>Avg Gross (Annual)</th>
+      <th>Total Payroll</th><th>Avg Net (Monthly)</th>
+      <th>Total Tax</th><th>Total Pension</th>
+    </tr></thead>
+    <tbody>${sorted.map(d=>`
+      <tr>
+        <td style="font-weight:600">${d.dept}</td>
+        <td style="text-align:center;color:var(--blue);font-weight:600">${d.count}</td>
+        <td style="text-align:right;font-weight:600;color:${d.avgGross>=compAvg?'var(--green)':'var(--text)'}">${fmtN(d.avgGross)}</td>
+        <td style="text-align:right">${fmtN(d.totalGross)}</td>
+        <td style="text-align:right;color:var(--green)">${fmtN(d.avgNet)}</td>
+        <td style="text-align:right;color:var(--amber)">${fmtN(d.totalTax)}</td>
+        <td style="text-align:right;color:var(--purple)">${fmtN(d.totalPension)}</td>
+      </tr>`).join('')}
+    </tbody>
+    <tfoot>
+      <tr style="font-weight:600;border-top:2px solid var(--border2)">
+        <td>EMPLOYEES TOTAL / AVG</td>
+        <td style="text-align:center;color:var(--blue)">${PAYROLL.reduce((s,d)=>s+d.count,0)}</td>
+        <td style="text-align:right">${fmtN(T.avgGross)}</td>
+        <td style="text-align:right">${fmtN(T.totalAnnual)}</td>
+        <td style="text-align:right;color:var(--green)">${fmtN(T.avgNet)}</td>
+        <td style="text-align:right;color:var(--amber)">${fmtN(T.totalTax)}</td>
+        <td style="text-align:right;color:var(--purple)">${fmtN(T.totalPension)}</td>
+      </tr>
+      <tr style="background:rgba(240,160,48,0.07);border-top:1px solid rgba(240,160,48,0.2)">
+        <td style="font-weight:600;color:#f0a030">CO-CEOs (Seye Bandele & Lekan Omotosho)</td>
+        <td style="text-align:center;color:#f0a030;font-weight:600">2</td>
+        <td style="text-align:right;color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoGrossAnnual/2)}</td>
+        <td style="text-align:right;color:#f0a030;font-weight:600">${fmtN(PAYROLL_TOTALS.ceoGrossAnnual)}</td>
+        <td style="text-align:right;color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoNetMonthly)}</td>
+        <td style="text-align:right;color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoTaxAnnual)}</td>
+        <td style="text-align:right;color:#f0a030">${fmtN(PAYROLL_TOTALS.ceoPensionAnnual)}</td>
+      </tr>
+      <tr style="background:rgba(26,58,92,0.08);border-top:2px solid var(--blue)">
+        <td style="font-weight:700;color:var(--blue)">GRAND TOTAL (incl. Co-CEOs)</td>
+        <td style="text-align:center;color:var(--blue);font-weight:700">${PAYROLL.reduce((s,d)=>s+d.count,0)+2}</td>
+        <td style="text-align:right;font-weight:600">—</td>
+        <td style="text-align:right;color:var(--blue);font-weight:700">${fmtN(PAYROLL_TOTALS.grandTotalAnnual)}</td>
+        <td style="text-align:right;color:var(--green);font-weight:700">${fmtN(PAYROLL_TOTALS.grandTotalNet)}</td>
+        <td style="text-align:right;color:var(--amber);font-weight:700">${fmtN(PAYROLL_TOTALS.grandTotalTax)}</td>
+        <td style="text-align:right;color:var(--purple);font-weight:700">${fmtN(PAYROLL_TOTALS.grandTotalPension)}</td>
+      </tr>
+    </tfoot>`;
+}
+
+
+
+
+
+
+
+</script>
+</body>
+</html>
